@@ -26,7 +26,10 @@ def worldGen(seed, seaLevel=.15, flatness=1.2):
     grid = (noise_gen.mix(gridArray) + .5)
 
     # Constraints in the form of continent outlines + constraints away from the poles
-    constraint = (masks.gradMask(width, height, 80) * noise_gen.generate_grid(width, height, .18, 1.8, .9))
+    lingrad = masks.linearGradient((-0, 1), (0, height), 50, width, height)
+    lingrad += masks.linearGradient((-0, 1), (0, 0), 50, width, height)
+    rlingrad = (lingrad * -1) + 1
+    constraint = (rlingrad * noise_gen.generate_grid(width, height, .18, 1.8, .9))
 
     # Conforming land features to constraints
     landmass = grid * constraint
