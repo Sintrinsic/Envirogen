@@ -5,41 +5,36 @@ import masks.Gradient as masks
 from noise.Perlin import Perlin
 
 
-def worldGen(seed, seaLevel=.15, flatness=1.2):
+def worldGen(seed, continant_size=.18, seaLevel=.15, flatness=1.3):
     noise_gen = Perlin(seed)
     width = 200
     height = 200
+
+    # ----- Generating the outline shape for major landmasses
     gridArray = []
-
-    #  land features
-    gridArray.append(noise_gen.generate_grid(width, height, .6, 2, 1))
-
-    # minor land features
-    gridArray.append(noise_gen.generate_grid(width, height, .2, .5, 1))
-    gridArray.append(noise_gen.generate_grid(width, height, .5, .4, .5))
-
-    # detail
-    gridArray.append(noise_gen.generate_grid(width, height, 2, .6, .1))
-    gridArray.append(noise_gen.generate_grid(width, height, 5, .3, .1))
-
-    # Feature blend
-    grid = (noise_gen.mix(gridArray) + .5)
-
-    # Constraints in the form of continent outlines + constraints away from the poles
+    # base perlin feature size
+    gridArray.append(noise_gen.generate_grid(width, height, continant_size, 1.8, .9))
+    gridArray.append(noise_gen.generate_grid(width, height, .7, .5, .9))
+    gridArray.append(noise_gen.generate_grid(width, height, .9, .2, .4))
+    landmass = noise_gen.mix(gridArray)
+    # gradiant though which we remove landmass by the poles
     lingrad = masks.linearGradient((-0, 1), (0, height), 50, width, height)
     lingrad += masks.linearGradient((-0, 1), (0, 0), 50, width, height)
     rlingrad = (lingrad * -1) + 1
-    constraint = (rlingrad * noise_gen.generate_grid(width, height, .18, 1.8, .9))
+    landmass *= rlingrad
+    # sea level + cap, to avoid overly positive values
+    landmass[landmass < seaLevel] = 0
+    landmass[landmass > 1] = 1
 
-    # Conforming land features to constraints
-    landmass = grid * constraint
+    # ----- Giving the landmasses detail/texture
+    gridArray = []
+    gridArray.append(noise_gen.generate_grid(width, height, .3, .8, 3))
+    gridArray.append(noise_gen.generate_grid(width, height, .5, .8, .6))
+    gridArray.append(noise_gen.generate_grid(width, height, 1, .6, .6))
+    gridArray.append(noise_gen.generate_grid(width, height, 3, .3, .6))
 
-    # Post-landmass re-brightening of the central continants
-    result = landmass * (masks.igradMask(width, height, 40) * 2)
+    result = (noise_gen.mix(gridArray) * landmass) / flatness
 
-    # setting a lower bound on heightmap to simulate oceans. This is essentially defining sea level
-    result[result <= seaLevel] = 0
-    result = result / flatness
 
     colors = [(0, .15, .4), (0, .4, .3), (0, .45, .3), (0, .5, .1), (0, .55, .1), (0, .6, .1), (0, .6, .1),
               (.7, .7, .7), (.7, .75, .7), (1, 1, 1), (1, 1, 1)]
@@ -54,13 +49,10 @@ def worldGen(seed, seaLevel=.15, flatness=1.2):
     plt.show()
 
 
-# ---------------------------------
-# ---  RUN THIS -------------------
-# -- play button in upper right ---
-# OOH nice
-# ---------------------------------
+
 
 seed = 5456  # random. Whatever you'd like.
-seaLevel = .15  # between .1 and .6 (.15 default) : Higher is more ocean.
-flatness = 1.2  # between .5 and 3 (1.2 default) : Higher value = flatter/less elevation.
-worldGen(seed, seaLevel, flatness)
+seaLevel = .3  # between .1 and .6 (.15 default) : Higher is more ocean.
+flatness = 1.3  # between .5 and 3 (1.2 default) : Higher value = flatter/less elevation.
+continant_size = .18
+worldGen(seed, continant_size, seaLevel, flatness)
